@@ -2,6 +2,7 @@
 
 NestJS REST API with PostgreSQL/Prisma persistence. The mobile API is documented
 in [`../API_CONTRACT.md`](../API_CONTRACT.md).
+NestJS and TypeScript API for the short-form video app.
 
 ## Run the complete local demo
 
@@ -12,6 +13,10 @@ Mux, or externally hosted database account is needed for this demo.
 cd backend
 npm ci
 npm run demo
+npm install
+cp .env.example .env
+# Replace the placeholder CLERK_SECRET_KEY in .env with your Clerk secret key.
+npm run start:dev
 ```
 
 Keep the terminal running. The launcher starts a local PostgreSQL server on
@@ -41,11 +46,9 @@ interfaces; the database listens only on loopback. `PORT` and
 `DEMO_DATABASE_PORT` are configurable if a port is occupied. Run one demo
 launcher per database directory.
 
-Check the health route:
+The public health route is `GET http://localhost:3000/v1/health`.
 
-```bash
-curl http://localhost:3000/v1/health
-```
+`GET http://localhost:3000/v1/me` requires a Clerk session token:
 
 Expected response:
 
@@ -127,3 +130,11 @@ Prisma CLI, client and adapter are pinned together at 7.10.0. `deepmerge-ts`
 and `mysql2` overrides patch vulnerabilities in Prisma tooling; no MySQL driver
 is used by application queries. The unused Nest deployment tool was removed.
 The dependency audit reported zero vulnerabilities after these updates.
+```http
+Authorization: Bearer <Clerk session token>
+```
+
+For now, the route returns the verified Clerk user ID. The local profile record
+and final `/v1/me` response will be added with the database migration. Set
+`CLERK_AUTHORIZED_PARTIES` to the comma-separated client origins once the mobile
+origins are known; configure this allowlist before production.
