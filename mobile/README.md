@@ -1,88 +1,94 @@
 # Insta Reals mobile
 
-Phase 0 mobile baseline: Expo SDK 57, React Native, TypeScript, and Expo Router.
-The app opens one branded launch screen. Backend integration starts in the next
-milestone; no server or API keys are needed to run this scaffold.
+Expo SDK 57, React Native, TypeScript and Expo Router. The app now has a vertical
+video feed, profiles, search, likes, comments, follows, uploads, messages, watch
+history and a recommended feed. Screens use the real backend API, with loading,
+empty, error and retry states.
 
-## Install
+## Install and run
 
-Use Node.js 22 LTS (22.13.0 or newer) and npm. If you use nvm, `.nvmrc` selects
-Node 22. From the shared `Insta-Reals/` repository:
+Use **Node 22.18+ on the 22.x line** so both apps use a compatible runtime.
+From `Insta-Reals/`, nvm users can run `nvm install` and `nvm use`.
 
-```sh
-cd mobile
-nvm install # nvm users only
-nvm use     # nvm users only
+First start the backend in its own terminal:
+
+```bash
+cd backend
 npm ci
+npm run demo
 ```
 
-If you installed Node 22 directly, skip the two nvm commands.
+In another terminal, from `Insta-Reals/`:
 
-## Run
-
-From `mobile/`:
-
-```sh
-npm start
+```bash
+cd mobile
+npm ci
+npm start -- --clear
 ```
 
-Install the SDK 57 version of Expo Go on your phone, sign in if prompted, and
-scan the terminal QR code. Keep the phone and computer on the same network.
-The expected screen says **Insta Reals** and **A new perspective.**
+Press **w** for a browser preview, or scan the QR code with an Expo Go version
+compatible with SDK 57. Other options are `npm run ios` for an installed Xcode
+simulator and `npm run android` for a running Android emulator.
 
-Other launch options:
+Choose **Alex** or **Sam** on the welcome screen. The backend saves their
+profiles, social actions, uploads and private conversations in its local
+PostgreSQL database. Switch accounts from Profile to try both sides of a chat.
+The inbox and active conversation poll every five seconds while visible.
+Messages and comments have controls to load older pages.
 
-```sh
-npm run web     # browser preview
-npm run ios     # iOS Simulator; requires Xcode and an installed simulator
-npm run android # Android emulator; requires Android Studio and a running emulator
+Upload a video from Create, then check your Profile and the feed. The demo accepts
+MP4, MOV and WebM files up to 100 MB. External sample films remain credited to
+their original creators and are not presented as app users.
+
+## API address and authentication
+
+The API defaults to Expo's development host on port 3000 with the `/v1` prefix.
+If your phone cannot reach it, copy `.env.example` to `.env` and set:
+
+```dotenv
+EXPO_PUBLIC_API_BASE_URL=http://YOUR_COMPUTER_LAN_IP:3000/v1
 ```
 
-The browser preview is useful for checking setup; still verify the app on an
-iOS or Android device before merging the mobile baseline.
+Restart Expo after changing environment values. The phone and computer should
+share a network. `localhost` on a phone refers to the phone itself.
+
+Leave `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` empty for the labelled local demo.
+To use Clerk, supply a publishable key and configure verification credentials
+for the same Clerk project in `backend/.env`. Clerk sign-in, Pexels and Mux
+adapters still need live credentials and provider testing. Never put server
+secrets in mobile; all `EXPO_PUBLIC_` values are visible to app users.
 
 ## Check before committing
 
-```sh
+```bash
 npm run typecheck
 npm run lint
+node --test src/features/feed/playback-request.test.cjs
 npx expo install --check
 npx expo-doctor
 npx expo export --platform all
 ```
 
-Exports go into the ignored `dist/` directory. Expo generates `.expo/` and
-`expo-env.d.ts`; these are also ignored. Keep this package's `package-lock.json`
-in Git so teammates can reproduce the installation with `npm ci`.
+Exports go into ignored `dist/`. Expo also generates ignored `.expo/` files.
+Commit this app's `package-lock.json` so `npm ci` reproduces dependencies.
+Build checks and successful iOS/Android exports do not confirm native device
+behavior; check playback, keyboard layout, uploads and account switching on an
+actual device before merging.
 
-On 2026-10-01, `npm audit` reports 13 moderate findings inherited from Expo's
-`xcode`/`uuid` tooling and Router's `query-string`/`decode-uri-component`
-dependencies. The suggested automatic repair downgrades Expo across major
-versions; resolving these findings needs a separate compatibility review before
-deployment. The audit result is separate from the build and Expo Doctor checks.
+The current mobile dependency audit reports **14 moderate findings** in
+transitive dependencies. The previous scaffold recorded 13. Resolve these with
+an Expo compatibility review before deployment; do not force a major-version
+change through an automatic audit repair.
 
-## Files
+## Code layout
 
-- `app/_layout.tsx`: the Expo Router stack and status bar.
-- `app/index.tsx`: the launch screen.
-- `app.json`: app identity, portrait orientation, and Router configuration.
-- `.env.example`: the future public API base URL, unused by this scaffold.
+- `app/(tabs)/`: feed, people, Create, inbox and your profile.
+- `app/users`, `app/comments`, `app/conversations`, `app/video`: detail routes.
+- `src/auth/`: demo sessions, Clerk sessions and the welcome screen.
+- `src/features/`: playback, social lists and messaging.
+- `src/lib/`: authenticated HTTP requests and resource loading.
+- `src/components/`: shared controls and dark theme.
+- `src/types.ts`: mobile API response types.
 
-Each file in `app/` is a route. Add feature logic under `src/` when its milestone
-arrives; keep screen components small.
-
-## Team split
-
-The mobile developer owns `mobile/**`; the backend developer owns `backend/**`.
-Each app has its own npm package and lockfile. Root documentation and contract
-changes need an agreed owner before either branch edits them. All commits,
-pushes, pull requests, and merges are performed by the developers.
-
-For a later API integration, copy `.env.example` to `.env` and set
-`EXPO_PUBLIC_API_BASE_URL` to the backend's reachable `/v1` URL. A physical phone
-needs the backend computer's LAN address rather than `localhost`. Values prefixed
-with `EXPO_PUBLIC_` are public; keep backend secrets out of this package.
-
-Setup references: [Expo Router installation](https://docs.expo.dev/router/installation/),
-[SDK compatibility](https://docs.expo.dev/versions/latest/), and
-[Expo Go for SDK 57](https://expo.dev/changelog/expo-go-57-login).
+The apps have separate npm packages and lockfiles. Humans own all Git actions;
+see the [root README](../README.md) and [API contract](../API_CONTRACT.md).
