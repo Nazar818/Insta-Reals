@@ -1,0 +1,177 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum VideoSource {
+  PEXELS
+  MUX
+  LOCAL
+  SAMPLE
+}
+
+enum UploadStatus {
+  pending
+  processing
+  ready
+  failed
+}
+
+model User {
+  id             String         @id @default(cuid())
+  clerkId        String         @unique
+  username       String         @unique
+  displayName    String
+  avatarUrl      String?
+  bio            String         @default("")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  videos         Video[]
+  likes          Like[]
+  comments       Comment[]
+  following      Follow[]       @relation("following")
+  followers      Follow[]       @relation("followers")
+  views          VideoView[]
+  uploads        Upload[]
+  conversationsA Conversation[] @relation("participantA")
+  conversationsB Conversation[] @relation("participantB")
+  messages       Message[]
+  feedSnapshots  FeedSnapshot[]
+}
+
+model Video {
+  id             String      @id @default(cuid())
+  source         VideoSource
+  sourceId       String
+  ownerId        String?
+  owner          User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  creatorName    String
+  attributionUrl String?
+  playbackUrl    String
+  thumbnailUrl   String?
+  caption        String?
+  ready          Boolean     @default(true)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  likes          Like[]
+  comments       Comment[]
+  views          VideoView[]
+  uploads        Upload[]
+
+  @@unique([source, sourceId])
+  @@index([ready, createdAt])
+  @@index([ownerId, createdAt])
+}
+
+model Like {
+  userId    String
+  videoId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([userId, videoId])
+  @@index([videoId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  videoId   String
+  authorId  String
+  text      String
+  video     Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([videoId, createdAt])
+}
+
+model Follow {
+  followerId String
+  followedId String
+  follower   User     @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  followed   User     @relation("followers", fields: [followedId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([followerId, followedId])
+  @@index([followedId])
+}
+
+model Conversation {
+  id             String    @id @default(cuid())
+  participantAId String
+  participantBId String
+  participantA   User      @relation("participantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB   User      @relation("participantB", fields: [participantBId], references: [id], onDelete: Cascade)
+  messages       Message[]
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@unique([participantAId, participantBId])
+  @@index([participantBId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  text           String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model VideoView {
+  id              String   @id @default(cuid())
+  userId          String
+  videoId         String
+  watchDurationMs Int
+  completed       Boolean
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video           Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  viewedAt        DateTime @default(now())
+
+  @@index([userId, viewedAt])
+  @@index([userId, videoId, viewedAt])
+}
+
+model Upload {
+  id          String       @id @default(cuid())
+  ownerId     String
+  owner       User         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  caption     String
+  contentType String
+  provider    String
+  status      UploadStatus @default(pending)
+  providerId  String?      @unique
+  assetId     String?      @unique
+  uploadUrl   String?
+  videoId     String?
+  video       Video?       @relation(fields: [videoId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([ownerId, createdAt])
+}
+
+model WebhookEvent {
+  id          String   @id
+  processedAt DateTime @default(now())
+}
+
+model FeedSnapshot {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoIds  String[]
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
